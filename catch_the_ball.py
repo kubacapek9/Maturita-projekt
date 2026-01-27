@@ -1,4 +1,3 @@
-
 import pygame
 import random
 import sys
@@ -96,7 +95,7 @@ while True:
 
     keys = pygame.key.get_pressed()
 
-    # ---------------- LOGIN OBRAZOVKA ----------------
+    # ---------- LOGIN ----------
     if game_state == LOGIN:
         title = font.render("Enter your name", True, WHITE)
         name_text = font.render(player_name + "|", True, GOLD)
@@ -105,25 +104,21 @@ while True:
         pygame.draw.rect(screen, BLUE, (WIDTH//2 - 200, HEIGHT//2 - 10, 400, 50), 2)
         screen.blit(name_text, (WIDTH//2 - 180, HEIGHT//2))
 
-    # ---------------- HRA ----------------
+    # ---------- HRA ----------
     elif game_state == PLAYING:
-        # Pohyb hráče
         if keys[pygame.K_LEFT] and basket_x > 0:
             basket_x -= basket_speed
         if keys[pygame.K_RIGHT] and basket_x < WIDTH - basket_width:
             basket_x += basket_speed
 
-        # Spawn objektů
         frame_count += 1
         if frame_count >= spawn_delay:
             spawn_object()
             frame_count = 0
 
-        # Pohyb objektů
         for obj in falling_objects[:]:
             obj["y"] += object_speed
 
-            # Kolize
             if basket_y < obj["y"] + obj["type"]["radius"] < basket_y + basket_height and \
                basket_x < obj["x"] < basket_x + basket_width:
                 if obj["type"]["type"] == "bomb":
@@ -133,40 +128,37 @@ while True:
                 falling_objects.remove(obj)
                 continue
 
-            # Spadne mimo
             if obj["y"] > HEIGHT:
                 if obj["type"]["type"] != "bomb":
                     lives -= 1
                 falling_objects.remove(obj)
 
-        # Obtížnost
         object_speed = 4 + score * 0.1
         spawn_delay = max(15, 40 - score // 2)
 
         if lives <= 0:
             game_state = GAME_OVER
 
-        # Košík
         pygame.draw.rect(screen, BLUE, (basket_x, basket_y, basket_width, basket_height), border_radius=10)
 
-        # Objekty
         for obj in falling_objects:
             pygame.draw.circle(screen, obj["type"]["color"],
                                (int(obj["x"]), int(obj["y"])),
                                obj["type"]["radius"])
 
-        # UI
         screen.blit(font.render(f"Score: {score}", True, WHITE), (20, 20))
         screen.blit(font.render(f"Lives: {lives}", True, WHITE), (WIDTH - 150, 20))
         screen.blit(font.render(f"Player: {player_name}", True, WHITE), (20, 55))
 
-    # ---------------- GAME OVER ----------------
+    # ---------- GAME OVER ----------
     elif game_state == GAME_OVER:
         over = font.render(f"Game Over, {player_name}!", True, RED)
+        final_score = font.render(f"Final Score: {score}", True, GOLD)
         restart = font.render("Press R to Restart", True, WHITE)
 
-        screen.blit(over, (WIDTH//2 - over.get_width()//2, HEIGHT//2 - 40))
-        screen.blit(restart, (WIDTH//2 - restart.get_width()//2, HEIGHT//2 + 10))
+        screen.blit(over, (WIDTH//2 - over.get_width()//2, HEIGHT//2 - 70))
+        screen.blit(final_score, (WIDTH//2 - final_score.get_width()//2, HEIGHT//2 - 20))
+        screen.blit(restart, (WIDTH//2 - restart.get_width()//2, HEIGHT//2 + 30))
 
         if keys[pygame.K_r]:
             score = 0
@@ -179,3 +171,4 @@ while True:
 
     pygame.display.flip()
     clock.tick(FPS)
+
