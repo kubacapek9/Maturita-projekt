@@ -1,3 +1,4 @@
+
 import pygame
 import random
 import sys
@@ -8,7 +9,7 @@ pygame.init()
 # Nastavení okna
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Catch the Ball Deluxe 🎯")
+pygame.display.set_caption("Catch the Ball 🎯")
 
 # FPS
 clock = pygame.time.Clock()
@@ -26,24 +27,23 @@ BG_BOTTOM = (40, 40, 100)
 # Font
 font = pygame.font.SysFont("arial", 32, bold=True)
 
-# Zvuky (můžeš nahradit vlastními soubory .wav)
-#catch_sound = pygame.mixer.Sound(pygame.mixer.Sound(pygame.mixer.Sound(pygame.mixer.get_init() and pygame.mixer.Sound(buffer=b'\x00'*10))))
-#pygame.mixer.music.load(pygame.mixer.music.get_busy() and "background.mp3" or pygame.mixer.music.get_busy() or pygame.mixer.Sound)
-# Pokud nemáš žádné zvuky, Pygame je přeskočí bez chyby
+# Herní stavy
+LOGIN = 0
+PLAYING = 1
+GAME_OVER = 2
+game_state = LOGIN
 
-# Hudba na pozadí (volitelně)
-#pygame.mixer.music.stop()
+player_name = ""
 
 # Hráč (košík)
 basket_width, basket_height = 120, 25
 basket_x = WIDTH // 2 - basket_width // 2
 basket_y = HEIGHT - 70
-basket_speed = 8
+basket_speed = 14
 
 # Herní proměnné
 score = 0
 lives = 3
-game_over = False
 object_speed = 4
 spawn_delay = 40
 frame_count = 0
@@ -65,7 +65,7 @@ def draw_background():
         b = BG_TOP[2] + (BG_BOTTOM[2] - BG_TOP[2]) * ratio
         pygame.draw.line(screen, (int(r), int(g), int(b)), (0, y), (WIDTH, y))
 
-# Přidání nového objektu
+# Přidání objektu
 def spawn_object():
     obj_type = random.choice(object_types)
     obj = {
@@ -75,9 +75,8 @@ def spawn_object():
     }
     falling_objects.append(obj)
 
-# Hlavní herní smyčka
+# Hlavní smyčka
 while True:
-    screen.fill((0, 0, 0))
     draw_background()
 
     for event in pygame.event.get():
@@ -85,16 +84,36 @@ while True:
             pygame.quit()
             sys.exit()
 
+        # LOGIN – psaní jména
+        if game_state == LOGIN and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN and player_name.strip() != "":
+                game_state = PLAYING
+            elif event.key == pygame.K_BACKSPACE:
+                player_name = player_name[:-1]
+            else:
+                if len(player_name) < 12:
+                    player_name += event.unicode
+
     keys = pygame.key.get_pressed()
 
-    if not game_over:
+    # ---------------- LOGIN OBRAZOVKA ----------------
+    if game_state == LOGIN:
+        title = font.render("Enter your name", True, WHITE)
+        name_text = font.render(player_name + "|", True, GOLD)
+
+        screen.blit(title, (WIDTH//2 - title.get_width()//2, HEIGHT//2 - 70))
+        pygame.draw.rect(screen, BLUE, (WIDTH//2 - 200, HEIGHT//2 - 10, 400, 50), 2)
+        screen.blit(name_text, (WIDTH//2 - 180, HEIGHT//2))
+
+    # ---------------- HRA ----------------
+    elif game_state == PLAYING:
         # Pohyb hráče
         if keys[pygame.K_LEFT] and basket_x > 0:
             basket_x -= basket_speed
         if keys[pygame.K_RIGHT] and basket_x < WIDTH - basket_width:
             basket_x += basket_speed
 
-        # Spawn nových objektů
+        # Spawn objektů
         frame_count += 1
         if frame_count >= spawn_delay:
             spawn_object()
@@ -112,45 +131,51 @@ while True:
                 else:
                     score += obj["type"]["points"]
                 falling_objects.remove(obj)
-                # pygame.mixer.Sound.play(catch_sound)
                 continue
 
-            # Když spadne mimo
+            # Spadne mimo
             if obj["y"] > HEIGHT:
                 if obj["type"]["type"] != "bomb":
                     lives -= 1
                 falling_objects.remove(obj)
 
-        # Zvyšování obtížnosti
+        # Obtížnost
         object_speed = 4 + score * 0.1
         spawn_delay = max(15, 40 - score // 2)
 
         if lives <= 0:
-            game_over = True
+            game_state = GAME_OVER
 
-    # Vykreslení košíku
-    pygame.draw.rect(screen, BLUE, (basket_x, basket_y, basket_width, basket_height), border_radius=10)
+        # Košík
+        pygame.draw.rect(screen, BLUE, (basket_x, basket_y, basket_width, basket_height), border_radius=10)
 
-    # Vykreslení objektů
-    for obj in falling_objects:
-        pygame.draw.circle(screen, obj["type"]["color"], (int(obj["x"]), int(obj["y"])), obj["type"]["radius"])
+        # Objekty
+        for obj in falling_objects:
+            pygame.draw.circle(screen, obj["type"]["color"],
+                               (int(obj["x"]), int(obj["y"])),
+                               obj["type"]["radius"])
 
-    # Text
-    score_text = font.render(f"Score: {score}", True, WHITE)
-    lives_text = font.render(f"Lives: {lives}", True, WHITE)
-    screen.blit(score_text, (20, 20))
-    screen.blit(lives_text, (WIDTH - 150, 20))
+        # UI
+        screen.blit(font.render(f"Score: {score}", True, WHITE), (20, 20))
+        screen.blit(font.render(f"Lives: {lives}", True, WHITE), (WIDTH - 150, 20))
+        screen.blit(font.render(f"Player: {player_name}", True, WHITE), (20, 55))
 
-    if game_over:
-        over_text = font.render("GAME OVER! Press R to Restart", True, RED)
-        screen.blit(over_text, (WIDTH // 2 - over_text.get_width() // 2, HEIGHT // 2))
+    # ---------------- GAME OVER ----------------
+    elif game_state == GAME_OVER:
+        over = font.render(f"Game Over, {player_name}!", True, RED)
+        restart = font.render("Press R to Restart", True, WHITE)
+
+        screen.blit(over, (WIDTH//2 - over.get_width()//2, HEIGHT//2 - 40))
+        screen.blit(restart, (WIDTH//2 - restart.get_width()//2, HEIGHT//2 + 10))
+
         if keys[pygame.K_r]:
             score = 0
             lives = 3
             falling_objects.clear()
             object_speed = 4
             spawn_delay = 40
-            game_over = False
+            basket_x = WIDTH // 2 - basket_width // 2
+            game_state = PLAYING
 
     pygame.display.flip()
     clock.tick(FPS)
